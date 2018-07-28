@@ -115,7 +115,7 @@ int read_data(int size, uint64_t * data, const char *optarg)
 {
 	uint64_t mask = 0x0;
 	unsigned long long int user_data = 0x0;
-	char user_input[16] = { 0 };
+	char user_input[20] = { 0 };
 	const char *start;
 	char *end;
 	int r = 0;
@@ -144,6 +144,7 @@ int read_data(int size, uint64_t * data, const char *optarg)
 			printf("Got %d\n", r);
 			return r;
 		}
+		r = 0;
 		start = user_input;
 	}
 
