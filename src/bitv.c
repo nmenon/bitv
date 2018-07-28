@@ -18,6 +18,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <limits.h>
+#include <errno.h>
 
 void help()
 {
@@ -34,7 +37,7 @@ void help()
 	       " repeat for multiple entries\n");
 }
 
-void print_vert(unsigned int dat, int size, int dec)
+void print_vert(uint64_t dat, int size, int dec)
 {
 	int start = (dec) ? size - 1 : 0;
 	int end = (dec) ? -1 : size;
@@ -106,9 +109,66 @@ void print_horiz(unsigned int dat, int size, int dec)
 	printf("%s\n%s\n", print_buff, line_buff);
 }
 
+int read_data(int size, uint64_t * data, const char *optarg)
+{
+	uint64_t mask = 0x0;
+	unsigned long long int user_data = 0x0;
+	char user_input[16] = { 0 };
+	const char *start;
+	char *end;
+	int r = 0;
+
+	switch (size) {
+	case 32:
+		mask = 0xFFFFFFFF;
+		break;
+	case 16:
+		mask = 0xFFFF;
+		break;
+	case 8:
+		mask = 0xFF;
+		break;
+	default:
+		return -1;
+	}
+	if (optarg) {
+		start = optarg;
+	} else {
+		r = scanf("%18s", user_input);
+		if (r != 1) {
+			printf("Got %d\n", r);
+			return r;
+		}
+		start = user_input;
+	}
+
+	user_data = strtoull(start, &end, 16);
+	if (user_data == 0 && end == start) {
+		printf("Error: Input(%s) is NOT a number!\n", start);
+		return -1;
+	}
+	if (user_data == ULLONG_MAX && errno) {
+		printf("Error: Input(%s) is Too Large!\n", start);
+		return -1;
+	}
+	if (*end) {
+		printf("Error: Input(%s) has non-data(%s) at end!\n", start,
+		       end);
+		return -1;
+	}
+
+	if (user_data & ~mask) {
+		printf("Error: Input(%s) is > %d bits !\n", start, size);
+		return -1;
+	}
+	*data = user_data & mask;
+
+	return r;
+}
+
 int main(int argc, char *argv[])
 {
-	unsigned int data = 0x0;
+	uint64_t data = 0x0;
 	unsigned char loop = 1;
 	unsigned char size = 32;
 	unsigned char horiz = 1;
@@ -145,7 +205,9 @@ int main(int argc, char *argv[])
 			loop = 0;
 			break;
 		case 'i':
-			sscanf(optarg, "%x", &data);
+			if (read_data(size, &data, optarg)) {
+				return -2;
+			}
 			loop = 0;
 			break;
 		default:
@@ -159,8 +221,7 @@ int main(int argc, char *argv[])
 		if (loop) {
 			printf("Enter Data(CTRL+C will quit)-size %d bits: ",
 			       size);
-			if (scanf("%x", &data) != 1) {
-				printf("Did not get the data I expected!\n");
+			if (read_data(size, &data, NULL)) {
 				return (-4);
 			}
 		}
