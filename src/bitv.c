@@ -26,7 +26,10 @@ void help()
 	       "{-v}           : print vertical[default horizontal]\n"
 	       "{-h}           : this help\n"
 	       "{-r}           : inverted order [default is incremental]\n"
-	       "{-s [8|16|32]} : input is 8, 16 or 32 bit wide[default is 32bits]\n"
+	       "{-s [8|16|32]} : input and display is 8, 16 or 32 bit wide[default is 32bits]\n"
+	       "{-B}           : short hand for input/output as 8 bits\n"
+	       "{-S}           : short hand for input/output as 16 bits\n"
+	       "{-W}           : short hand for input/output as 32 bits\n"
 	       "{-i [val]}     : input value - if provided, will exit, else will"
 	       " repeat for multiple entries\n");
 }
@@ -111,8 +114,17 @@ int main(int argc, char *argv[])
 	unsigned char horiz = 1;
 	unsigned char dec = 1;
 	char opt;
-	while ((opt = getopt(argc, argv, "vhrs:i:")) != -1) {
+	while ((opt = getopt(argc, argv, "BSWvhrs:i:")) != -1) {
 		switch (opt) {
+		case 'B':
+			size = 8;
+			break;
+		case 'S':
+			size = 16;
+			break;
+		case 'W':
+			size = 32;
+			break;
 		case 'v':
 			horiz = 0;
 			break;
@@ -149,7 +161,7 @@ int main(int argc, char *argv[])
 			       size);
 			if (scanf("%x", &data) != 1) {
 				printf("Did not get the data I expected!\n");
-				return(-4);
+				return (-4);
 			}
 		}
 		if (horiz) {
