@@ -29,10 +29,11 @@ void help()
 	       "{-v}           : print vertical[default horizontal]\n"
 	       "{-h}           : this help\n"
 	       "{-r}           : inverted order [default is incremental]\n"
-	       "{-s [8|16|32]} : input and display is 8, 16 or 32 bit wide[default is 32bits]\n"
+	       "{-s [8|16|32|64]} : input and display is 8, 16, 32 or 64 bits wide[default is 32bits]\n"
 	       "{-B}           : short hand for input/output as 8 bits\n"
 	       "{-S}           : short hand for input/output as 16 bits\n"
 	       "{-W}           : short hand for input/output as 32 bits\n"
+	       "{-L}           : short hand for input/output as 64 bits\n"
 	       "{-i [val]}     : input value - if provided, will exit, else will"
 	       " repeat for multiple entries\n");
 }
@@ -42,15 +43,15 @@ void print_vert(uint64_t dat, int size, int dec)
 	int start = (dec) ? size - 1 : 0;
 	int end = (dec) ? -1 : size;
 	int idx;
-	int x = 0;
+	unsigned int x = 0;
 	int bits = 0;
 	for (idx = start; idx != end; (dec) ? idx-- : idx++) {
-		printf("[%02d] - %01d\n", idx, (dat & (1 << idx)) ? 1 : 0);
+		printf("[%02d] - %01d\n", idx, (dat >> idx) & 0x1 ? 0x1 : 0x0);
 		if (dec) {
 			x <<= 1;
-			x |= (dat & (1 << idx)) ? 1 : 0;
+			x |= ((dat >> idx) & 0x1) ? 1 : 0;
 		} else {
-			x |= ((dat & (1 << idx)) ? 1 : 0) << bits;
+			x |= ((dat >> idx) & 0x1 ? 1 : 0) << bits;
 		}
 		if (bits == 3) {
 			printf("-- 0x%01x --\n", x);
@@ -62,16 +63,17 @@ void print_vert(uint64_t dat, int size, int dec)
 	}
 }
 
-void print_horiz(unsigned int dat, int size, int dec)
+void print_horiz(uint64_t dat, int size, int dec)
 {
 	int start = (dec) ? size - 1 : 0;
 	int end = (dec) ? -1 : size;
 	int idx;
-	char print_buff[255];
-	char line_buff[255];
+	char print_buff[512];
+	char line_buff[512];
 	char tbuff[10];
-	int x;
+	unsigned int x;
 	int bits = 0;
+
 	sprintf(print_buff, "|");
 	sprintf(line_buff, "-");
 	for (idx = start; idx != end; (dec) ? idx-- : idx++) {
@@ -82,7 +84,7 @@ void print_horiz(unsigned int dat, int size, int dec)
 	printf("%s\n%s\n%s\n", line_buff, print_buff, line_buff);
 	sprintf(print_buff, "|");
 	for (idx = start; idx != end; (dec) ? idx-- : idx++) {
-		sprintf(tbuff, " %01d |", (dat & (1 << idx)) ? 1 : 0);
+		sprintf(tbuff, " %01d |", (dat >> idx) & 0x1 ? 0x1 : 0x0);
 		strcat(print_buff, tbuff);
 	}
 	printf("%s\n%s\n", print_buff, line_buff);
@@ -92,12 +94,12 @@ void print_horiz(unsigned int dat, int size, int dec)
 	for (idx = start; idx != end; (dec) ? idx-- : idx++) {
 		if (dec) {
 			x <<= 1;
-			x |= (dat & (1 << idx)) ? 1 : 0;
+			x |= ((dat >> idx) & 0x1) ? 1 : 0;
 		} else {
-			x |= ((dat & (1 << idx)) ? 1 : 0) << bits;
+			x |= ((dat >> idx) & 0x1 ? 1 : 0) << bits;
 		}
 		if (bits == 3) {
-			sprintf(tbuff, "0x%01x|", x);
+			sprintf(tbuff, "0x%01x|", (x & 0xf));
 			bits = 0;
 			x = 0;
 		} else {
@@ -119,6 +121,9 @@ int read_data(int size, uint64_t * data, const char *optarg)
 	int r = 0;
 
 	switch (size) {
+	case 64:
+		mask = 0xFFFFFFFFFFFFFFFF;
+		break;
 	case 32:
 		mask = 0xFFFFFFFF;
 		break;
@@ -174,7 +179,7 @@ int main(int argc, char *argv[])
 	unsigned char horiz = 1;
 	unsigned char dec = 1;
 	char opt;
-	while ((opt = getopt(argc, argv, "BSWvhrs:i:")) != -1) {
+	while ((opt = getopt(argc, argv, "BSWLvhrs:i:")) != -1) {
 		switch (opt) {
 		case 'B':
 			size = 8;
@@ -184,6 +189,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'W':
 			size = 32;
+			break;
+		case 'L':
+			size = 64;
 			break;
 		case 'v':
 			horiz = 0;
@@ -196,9 +204,11 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			size = atoi(optarg);
-			if ((size != 8) && (size != 16) && (size != 32)) {
-				printf("size %d should have been 8,16 or 32 \n",
-				       size);
+			if ((size != 8) && (size != 16) && (size != 32)
+			    && (size != 64)) {
+				printf
+				    ("size %d should have been 8,16, 32 or 64\n",
+				     size);
 				help();
 				return -2;
 			}
